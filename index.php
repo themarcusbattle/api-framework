@@ -14,8 +14,12 @@ function parse_request() {
         return false;
     }
 
+   $uri_parts = parse_url( $_SERVER['REQUEST_URI'] );
+   $endpoint  = isset( $uri_parts['path'] ) ? $uri_parts['path'] : '';
+   $query     = isset( $uri_parts['query'] ) ? $uri_parts['query'] : '';
+
     // Remove extraneous values.
-    $parsed_request = explode( '/', $_SERVER['REQUEST_URI'], 3 );
+    $parsed_request = explode( '/', $endpoint, 3 );
     array_shift( $parsed_request );
 	
 	if ( 2 > count( $parsed_request ) ) {
@@ -39,13 +43,10 @@ function parse_request() {
 		);
 	}
 	
-	$parsed_request['endpoint'] = $resources;
-	/* echo '<pre>';
-	print_r( $resources );
-	echo "</pre>";
-	exit; */
-//     $request_keys = array( 'resource', 'parameters' );
-/*     $paresed_request['endpoint'] = array_combine( $request_keys, $request ); */
+	$parsed_request['endpoint'] = array( 
+        'resources' => $resources,
+        'query'     => explode( '=', $query, 2 ),
+    );
 
     // Set the REQUEST method.
     $parsed_request['method'] = $_SERVER['REQUEST_METHOD'];
@@ -64,7 +65,7 @@ function return_json( $data = array() ) {
 
     header( 'Content-type: application/json' );
 
-    echo json_encode( $data, JSON_FORCE_OBJECT );
+    echo json_encode( $data );
 
 }
 
