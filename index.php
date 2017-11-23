@@ -15,24 +15,42 @@ function parse_request() {
     }
 
     // Remove extraneous values.
-    $parsed_reuqest = explode( '/', $_SERVER['REQUEST_URI'], 3 );
-    array_shift( $parsed_reuqest );
-
+    $parsed_request = explode( '/', $_SERVER['REQUEST_URI'], 3 );
+    array_shift( $parsed_request );
+	
+	if ( 2 > count( $parsed_request ) ) {
+		return array(
+			'error' => "Your endpoint isn't properly formatted"
+		);
+	}
+	
     // Convert the API call into the proper format.
     $api_call_keys   = array( 'version', 'endpoint' );
-    $paresed_request = array_combine( $api_call_keys, $parsed_reuqest );
+    $parsed_request  = array_combine( $api_call_keys, $parsed_request );
 
     // Prepare the request.
-    $request = $paresed_request['endpoint'];
-    $request = explode( '/', $request, 2 );
-
-    $request_keys = array( 'resource', 'parameters' );
-    $paresed_request['endpoint'] = array_combine( $request_keys, $request );
+    $endpoint_parts = explode( '/', $parsed_request['endpoint'] );
+//     $resources = array_chunk( $endpoint_parts, 2 );
+	
+	foreach ( array_chunk( $endpoint_parts, 2 ) as $resource ) {
+		$resources[] = array(
+			'resource' => isset( $resource[0] ) ? $resource[0] : '',
+			'id'       => isset( $resource[1] ) ? $resource[1] : '',
+		);
+	}
+	
+	$parsed_request['endpoint'] = $resources;
+	/* echo '<pre>';
+	print_r( $resources );
+	echo "</pre>";
+	exit; */
+//     $request_keys = array( 'resource', 'parameters' );
+/*     $paresed_request['endpoint'] = array_combine( $request_keys, $request ); */
 
     // Set the REQUEST method.
-    $paresed_request['method'] = $_SERVER['REQUEST_METHOD'];
-
-    return( $paresed_request );
+    $parsed_request['method'] = $_SERVER['REQUEST_METHOD'];
+	
+    return( $parsed_request );
 }
 
 /**
@@ -46,7 +64,7 @@ function return_json( $data = array() ) {
 
     header( 'Content-type: application/json' );
 
-    echo json_encode( $data );
+    echo json_encode( $data, JSON_FORCE_OBJECT );
 
 }
 
