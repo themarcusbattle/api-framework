@@ -34,8 +34,8 @@ function parse_request() {
 
     // Prepare the request.
     $endpoint_parts = explode( '/', $parsed_request['endpoint'] );
-//     $resources = array_chunk( $endpoint_parts, 2 );
-	
+	parse_str( $query, $query_parts );
+	print_r( $query_parts ); exit;
 	foreach ( array_chunk( $endpoint_parts, 2 ) as $resource ) {
 		$resources[] = array(
 			'resource' => isset( $resource[0] ) ? $resource[0] : '',
@@ -43,10 +43,18 @@ function parse_request() {
 		);
 	}
 	
+	foreach ( array_chunk( $query_parts, 2 ) as $query ) {
+		$queries[] = array(
+			'param' => isset( $query[0] ) ? $query[0] : '',
+			'value' => isset( $query[1] ) ? $query[1] : '',
+		);
+	}
+	
 	$parsed_request['endpoint'] = array( 
         'resources' => $resources,
-        'query'     => explode( '=', $query, 2 ),
+        'queries'   => $queries,
     );
+
 
     // Set the REQUEST method.
     $parsed_request['method'] = $_SERVER['REQUEST_METHOD'];
