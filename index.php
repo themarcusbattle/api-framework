@@ -5,6 +5,79 @@
  * @package API_By_Marcus
  */
 
+class API_Request {
+
+    public $request;
+
+    public $method;
+
+    public $queries;
+
+    public $resources;
+
+    public function __construct( $request = '' ) {
+
+        $request_parts = parse_url( $request );
+
+        $this->parse_request( $request_parts );
+        $this->parse_query( $request_parts );
+        $this->parse_endpoint( $request_parts );
+
+        $this->method  = $_SERVER['REQUEST_METHOD'];
+
+    }
+
+    public function parse_request( $request_parts = array() ) {
+        $this->request = isset( $request_parts['path'] ) ? $request_parts['path'] : '';
+    }
+
+    public function parse_query( $request_parts = array() ) {
+
+        $query       = isset( $request_parts['query'] ) ? $request_parts['query'] : '';
+        $query_parts = explode( '&', $query );
+
+        $queries = array();
+
+        foreach ( $query_parts as $part ) {
+
+            $parts = explode( '=', $part );
+
+            $queries[] = array(
+                'parameter' => $parts[0],
+                'value'     => $parts[1],
+            );
+        }
+        
+        $this->queries = $queries;
+    }
+
+    public function parse_endpoint( $request_parts = array() ) {
+
+        $endpoint_parts = explode( '/', substr( $request_parts['path'], 1 ) );
+
+        foreach ( array_chunk( $endpoint_parts, 2 ) as $resource ) {
+            $resources[] = array(
+                'resource' => isset( $resource[0] ) ? $resource[0] : '',
+                'id'       => isset( $resource[1] ) ? $resource[1] : '',
+            );
+        }
+
+        $this->resources = $resources;
+    }
+
+    public function get_request() {
+        return $this->request;
+    }
+
+    public function get_method() {
+        return $this->method;
+    }
+}
+
+$api_request = new API_Request( $_SERVER['REQUEST_URI'] );
+
+print_r( $api_request ); exit;
+
  /**
   * Parses the API request and prepares it to be processed by the router.
   */
@@ -60,6 +133,13 @@ function parse_request() {
     $parsed_request['method'] = $_SERVER['REQUEST_METHOD'];
 	
     return( $parsed_request );
+}
+
+/**
+ * Detect the version number from the API request
+ */
+function parse_api_version( $api_request ) {
+    return 'v1';
 }
 
 /**
