@@ -240,12 +240,28 @@ class API {
 	 */
 	public function __construct() {
 		
+		$this->load_schema();
+		
 		$this->request  = new API_Request( $_SERVER['REQUEST_URI'] );
 		$this->query    = new API_Query( $this->request );
 		$this->database = new API_Database();
 
 	}
 	
+	/**
+	 * Loads the schema that defines the API version, resources and mapping. 
+	 */
+	public function load_schema() {
+		
+		$schema_path = dirname( __FILE__ ) . '/schema.json';
+		
+		if ( ! file_exists( $schema_path ) ) {
+			return;
+		}
+		
+		$schema = json_decode( file_get_contents( $schema_path ), true );
+		echo "<pre>"; print_r( $schema ); exit;
+	}
 
 	public function get_response() { 
 	
