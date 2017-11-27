@@ -1,161 +1,300 @@
 <?php
 /**
- * API Generator.
+ * API Framework.
  *
  * @package API_By_Marcus
  */
 
+/**
+ * API_Request Class.
+ *
+ * Captures details of the incoming request.
+ */
 class API_Request {
 
-    public $request;
+    protected $request;
+    
+    protected $query;
 
-    public $method;
+    protected $method;
 
-    public $queries;
+	protected $version;
 
-    public $resources;
+	protected $endpoint;
 
     public function __construct( $request = '' ) {
 
-        $request_parts = parse_url( $request );
-
-        $this->parse_request( $request_parts );
-        $this->parse_query( $request_parts );
-        $this->parse_endpoint( $request_parts );
-
-        $this->method  = $_SERVER['REQUEST_METHOD'];
-
+		// Save all of the initial requests to the API.
+        $request_parts  = parse_url( $request );
+        $this->request  = isset( $request_parts['path'] ) ? $request_parts['path'] : '';
+		$this->query    = isset( $request_parts['query'] ) ? $request_parts['query'] : '';
+        $this->method   = isset( $_SERVER['REQUEST_METHOD'] ) ? $_SERVER['REQUEST_METHOD'] : 'GET';
+		
+		// Parse the required variables.
+		$this->version   = $this->parse_version();
+		$this->endpoint  = $this->parse_endpoint();
+		
+    }
+    
+    public function parse_version() {
+    	
+    	if ( ! $this->get_request() ) {
+    		return '';
+    	}
+    	
+    	$request_parts = explode( '/', substr( $this->request, 1 ) );
+    	
+    	return $request_parts[0];
     }
 
-    public function parse_request( $request_parts = array() ) {
-        $this->request = isset( $request_parts['path'] ) ? $request_parts['path'] : '';
+    public function parse_endpoint() {
+    	
+    	if ( ! $this->get_request() || ! $this->get_version() ) {
+    		return '';
+    	}
+
+        return str_replace( '/' . $this->get_version(), '', $this->get_request() );
     }
 
-    public function parse_query( $request_parts = array() ) {
-
-        $query       = isset( $request_parts['query'] ) ? $request_parts['query'] : '';
-        $query_parts = explode( '&', $query );
-
-        $queries = array();
-
-        foreach ( $query_parts as $part ) {
-
-            $parts = explode( '=', $part );
-
-            $queries[] = array(
-                'parameter' => $parts[0],
-                'value'     => $parts[1],
-            );
-        }
-        
-        $this->queries = $queries;
+    
+    public function get_request() {
+        return $this->request;
     }
 
-    public function parse_endpoint( $request_parts = array() ) {
+	public function get_query() {
+		return $this->query;
+	}
 
-        $endpoint_parts = explode( '/', substr( $request_parts['path'], 1 ) );
+    public function get_method() {
+        return $this->method;
+    }
+    
+    public function get_version() {
+        return $this->version;
+    }
+    
+    public function get_endpoint() {
+    	return $this->endpoint;
+    }
+}
 
-        foreach ( array_chunk( $endpoint_parts, 2 ) as $resource ) {
+/**
+ * API_Query Class.
+ *
+ * Converts the incoming request into a properly formatted query for the database.
+ */
+class API_Query {
+	
+	protected $resources;
+
+	protected $parameters;
+
+	public function __construct( API_Request $api_request ) {
+
+		$this->resources  = $this->parse_resources( $api_request );
+		$this->parameters = $this->parse_parameters( $api_request );
+	}
+	
+    
+    public function parse_resources( $api_request ) {
+
+        $resource_parts = explode( '/', substr( $api_request->get_endpoint(), 1 ) );
+
+        foreach ( array_chunk( $resource_parts, 2 ) as $resource ) {
             $resources[] = array(
                 'resource' => isset( $resource[0] ) ? $resource[0] : '',
                 'id'       => isset( $resource[1] ) ? $resource[1] : '',
             );
         }
 
-        $this->resources = $resources;
+        return $resources;
     }
 
-    public function get_request() {
-        return $this->request;
+	public function parse_parameters( $api_request ) {
+
+        $query_parts = explode( '&', $api_request->get_query() );
+
+        $parameters = array();
+
+        foreach ( $query_parts as $query ) {
+
+            $parameter_parts = explode( '=', $query );
+
+            $parameters[] = array(
+                'parameter' => $parameter_parts[0],
+                'value'     => $parameter_parts[1],
+            );
+        }
+        
+        return $parameters;
     }
 
-    public function get_method() {
-        return $this->method;
-    }
-}
-
-$api_request = new API_Request( $_SERVER['REQUEST_URI'] );
-
-print_r( $api_request ); exit;
-
- /**
-  * Parses the API request and prepares it to be processed by the router.
-  */
-function parse_request() {
-
-    if ( ! isset( $_SERVER['REQUEST_URI'] ) ) {
-        return false;
-    }
-
-   $uri_parts = parse_url( $_SERVER['REQUEST_URI'] );
-   $endpoint  = isset( $uri_parts['path'] ) ? $uri_parts['path'] : '';
-   $query     = isset( $uri_parts['query'] ) ? $uri_parts['query'] : '';
-
-    // Remove extraneous values.
-    $parsed_request = explode( '/', $endpoint, 3 );
-    array_shift( $parsed_request );
-	
-	if ( 2 > count( $parsed_request ) ) {
-		return array(
-			'error' => "Your endpoint isn't properly formatted"
-		);
+	public function get_resources() {
+		return $this->resources;
 	}
 	
-    // Convert the API call into the proper format.
-    $api_call_keys   = array( 'version', 'endpoint' );
-    $parsed_request  = array_combine( $api_call_keys, $parsed_request );
-
-    // Prepare the request.
-    $endpoint_parts = explode( '/', $parsed_request['endpoint'] );
-	parse_str( $query, $query_parts );
-	print_r( $query_parts ); exit;
-	foreach ( array_chunk( $endpoint_parts, 2 ) as $resource ) {
-		$resources[] = array(
-			'resource' => isset( $resource[0] ) ? $resource[0] : '',
-			'id'       => isset( $resource[1] ) ? $resource[1] : '',
-		);
+	public function get_parameters() {
+		return $this->parameters;
 	}
-	
-	foreach ( array_chunk( $query_parts, 2 ) as $query ) {
-		$queries[] = array(
-			'param' => isset( $query[0] ) ? $query[0] : '',
-			'value' => isset( $query[1] ) ? $query[1] : '',
-		);
-	}
-	
-	$parsed_request['endpoint'] = array( 
-        'resources' => $resources,
-        'queries'   => $queries,
-    );
-
-
-    // Set the REQUEST method.
-    $parsed_request['method'] = $_SERVER['REQUEST_METHOD'];
-	
-    return( $parsed_request );
 }
 
 /**
- * Detect the version number from the API request
+ * API_Database Class.
+ *
+ * Processes the queries to manipulate or retrieve the requested data. 
  */
-function parse_api_version( $api_request ) {
-    return 'v1';
+class API_Database {
+	
+	protected $host;
+	
+	protected $name;
+	
+	protected $username;
+	
+	protected $password;
+	
+	protected $actions;
+
+	public $connection;
+
+	public function __construct() {
+		
+		$this->actions = array(
+			'GET' => array(
+				'action'  => 'get',
+				'command' => 'SELECT',
+			),
+			'POST' => array(
+				'action'  => 'insert',
+				'command' => 'INSERT',
+			),
+		);
+
+		// Load class-settings-database.php to grab credentials.
+ 
+		$this->host     = 'localhost';
+		$this->name     = 'api-test';
+		$this->username = 'c3c19e377130';
+		$this->password = 'G!v3t8k3';
+		$this->charset  = 'utf8mb4';
+
+		try {
+			$this->connection = $this->make_connection();
+		}
+		
+		catch ( Exception $e ) {
+			echo 'Message: ' .$e->getMessage();
+		}
+
+	}
+	
+	private function make_connection() {
+		
+		$dsn = sprintf( "mysql:host=%s;dbname=%s;charset=%s", $this->host, $this->name, $this->charset );
+		$pdo = new PDO( $dsn, $this->username, $this->password );
+		
+		if ( ! $pdo instanceof PDO ) {
+			throw new Exception( "Database credentials are incorrect. Please check and try your request again." );
+		}
+		
+		return $pdo;
+	}
+	
+	public function parse_method( $method = 'GET' ) {
+		return $this->actions[ $method ];
+	}
+
+	public function prepare( API_Query $query, $action ) {
+		
+		$sql = $action['command'];
+		
+		// Loop through each resource to build sql statement.
+		foreach ( $query->get_resources() as $index => $resource ) {
+			
+			if ( 0 === $index ) {
+				
+				switch ( $action['command'] ) {
+					
+					case 'SELECT':
+						$sql .= " * FROM " . $resource['resource'] . " WHERE id = '" . $resource['id'] . "'";
+				}
+				
+			} else {
+				
+			}
+
+		}
+		
+		 echo $sql;
+	}
+	
 }
 
 /**
- * Returns the JSON data.
- *
- * @since 1.0.0
- *
- * @param array $data The requested data. 
+ * API Class. 
  */
-function return_json( $data = array() ) {
+class API {
+	
+	/**
+	 * The constructor.
+	 */
+	public function __construct() {
+		
+		$this->request  = new API_Request( $_SERVER['REQUEST_URI'] );
+		$this->query    = new API_Query( $this->request );
+		$this->database = new API_Database();
 
-    header( 'Content-type: application/json' );
+	}
+	
 
-    echo json_encode( $data );
+	public function get_response() { 
+	
+		// Determine database action.
+		$action = $this->database->parse_method( $this->request->get_method() );
+		
+		// Convert the query into SQL.
+		$sql  = $this->database->prepare( $this->query, $action );
+		
+		// 3. Run the query
+		// $this->database->$action( $sql );
+		$data = array( 'something' => 'big' );
+		
+		return $data;
+	}
+	
+	public function create() { }
+	
+	public function read() { }
+	
+	public function update() { }
+	
+	public function delete() { }
 
+	/**
+	 * Returns the JSON data.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $data The requested data. 
+	 */
+	function return_json( $data = array() ) {
+	
+	    header( 'Content-type: application/json' );
+	
+	    echo json_encode( $data );
+	
+	}
 }
 
-$data = parse_request();
-return_json( $data );
+$api = new API();
+
+/* echo '<pre>';
+print_r( $api ); */
+
+// Query the database for the requested data.
+$response = $api->get_response();
+
+// Send the response to the browser.
+$api->return_json( $response );
+
+

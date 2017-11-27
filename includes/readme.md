@@ -1,0 +1,1 @@
+This folder contains internal assets/classes needed by the framework.
