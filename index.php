@@ -22,6 +22,9 @@ class API_Request {
 
 	protected $endpoint;
 
+	/**
+	 * The constructor.
+	 */
     public function __construct( $request = '' ) {
 
 		// Save all of the initial requests to the API.
@@ -55,8 +58,33 @@ class API_Request {
 
         return str_replace( '/' . $this->get_version(), '', $this->get_request() );
     }
-
+	
+	public function verify_request( $schema = array() ) {
+		
+		// Check to see if the API version is defined.
+		if ( ! isset( $schema[ $this->get_version() ] ) ) {
+			return;
+		}
+		
+		// Check to see if the requested endpoint is valid
+		if ( ! $this->endpoint_exists( $schema ) ) {
+			return;
+		}
+		
+		return true;
+	}
     
+    public function endpoint_exists( $schema ) {
+    	
+    	$endpoints = array_keys( $schema[ $this->get_version() ]['endpoints'] );
+    	
+    	if ( in_array( $this->endpoint, $endpoints ) ) {
+    		return true;
+    	}
+    	
+    	return false;
+    }
+     
     public function get_request() {
         return $this->request;
     }
@@ -85,12 +113,15 @@ class API_Request {
  */
 class API_Query {
 	
+	public $request;
+	
 	protected $resources;
 
 	protected $parameters;
 
 	public function __construct( API_Request $api_request ) {
 
+		$this->request    = $api_request;
 		$this->resources  = $this->parse_resources( $api_request );
 		$this->parameters = $this->parse_parameters( $api_request );
 	}
@@ -204,28 +235,19 @@ class API_Database {
 		return $this->actions[ $method ];
 	}
 
-	public function prepare( API_Query $query, $action ) {
+	public function get_results( API_Query $query, $schema ) {
 		
-		$sql = $action['command'];
+		$endpoint        = $query->request->get_endpoint();
+		$endpoint_schema = $schema[ $query->request->get_version() ]['endpoints'][ $endpoint ];
+		$sql             = $endpoint_schema['queries'][ $query->request->get_method() ];
 		
-		// Loop through each resource to build sql statement.
-		foreach ( $query->get_resources() as $index => $resource ) {
-			
-			if ( 0 === $index ) {
-				
-				switch ( $action['command'] ) {
-					
-					case 'SELECT':
-						$sql .= " * FROM " . $resource['resource'] . " WHERE id = '" . $resource['id'] . "'";
-				}
-				
-			} else {
-				
-			}
-
-		}
+		// Execute the statement. 
+		$statement       = $this->connection->prepare( $sql );
+		$statement->execute();
 		
-		 echo $sql;
+		$results = $statement->fetchAll(PDO::FETCH_ASSOC);
+		
+		return $results;
 	}
 	
 }
@@ -235,12 +257,14 @@ class API_Database {
  */
 class API {
 	
+	protected $schema;
+	
 	/**
 	 * The constructor.
 	 */
 	public function __construct() {
 		
-		$this->load_schema();
+		$this->schema   = $this->load_config( 'schema' );
 		
 		$this->request  = new API_Request( $_SERVER['REQUEST_URI'] );
 		$this->query    = new API_Query( $this->request );
@@ -251,40 +275,32 @@ class API {
 	/**
 	 * Loads the schema that defines the API version, resources and mapping. 
 	 */
-	public function load_schema() {
+	public function load_config( $config_name = '' ) {
 		
-		$schema_path = dirname( __FILE__ ) . '/schema.json';
+		$schema_path = dirname( __FILE__ ) . '/' . $config_name . '.json';
 		
 		if ( ! file_exists( $schema_path ) ) {
 			return;
 		}
 		
-		$schema = json_decode( file_get_contents( $schema_path ), true );
-		echo "<pre>"; print_r( $schema ); exit;
+		return json_decode( file_get_contents( $schema_path ), true );
+		
 	}
 
 	public function get_response() { 
-	
-		// Determine database action.
-		$action = $this->database->parse_method( $this->request->get_method() );
+		
+		// Verify that the request is valid.
+		if ( ! $this->request->verify_request( $this->get_schema() ) ) {
+			return array( 'error' => 'This request is invalid. Check the API version or endpoint and try again.' );
+		}
 		
 		// Convert the query into SQL.
-		$sql  = $this->database->prepare( $this->query, $action );
-		
-		// 3. Run the query
-		// $this->database->$action( $sql );
-		$data = array( 'something' => 'big' );
-		
-		return $data;
+		return $this->database->get_results( $this->query, $this->schema );
 	}
 	
-	public function create() { }
-	
-	public function read() { }
-	
-	public function update() { }
-	
-	public function delete() { }
+	public function get_schema() {
+		return $this->schema;
+	}
 
 	/**
 	 * Returns the JSON data.
@@ -302,15 +318,11 @@ class API {
 	}
 }
 
+// Define a new API.
 $api = new API();
-
-/* echo '<pre>';
-print_r( $api ); */
 
 // Query the database for the requested data.
 $response = $api->get_response();
 
 // Send the response to the browser.
 $api->return_json( $response );
-
-
