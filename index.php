@@ -5,11 +5,11 @@
  * @package API_By_Marcus
  */
 
-// Load the include
-include('includes/class-api-router.php');
-include('includes/class-api-query.php');
-include('includes/class-api-database.php');
-include('includes/class-api.php');
+// Load the includes.
+include 'includes/class-api-database.php';
+include 'includes/class-api-router.php';
+include 'includes/class-api-query.php';
+include 'includes/class-api.php';
 
 // Define a new API.
 $api = new API();

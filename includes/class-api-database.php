@@ -1,11 +1,26 @@
-<?
+<?php
 /**
  * API_Database Class.
  *
- * Processes the queries to manipulate or retrieve the requested data. 
+ * @category Class
+ * @package  API
+ * @author   Marcus Battle
+ */
+
+/**
+ * API_Database Class.
+ *
+ * Processes the queries to manipulate or retrieve the requested data.
  */
 class API_Database {
-	
+
+	/**
+	 * The database credentials.
+	 *
+	 * @var array
+	 */
+	protected $credentials;
+
 	protected $host;
 	
 	protected $name;
@@ -20,7 +35,8 @@ class API_Database {
 
 	public function __construct( $credentials = array() ) {
 		
-		print_r( $credentials ); exit;
+		$this->set_credentials( $credentials );
+
 		$this->actions = array(
 			'GET' => array(
 				'action'  => 'get',
@@ -31,13 +47,7 @@ class API_Database {
 				'command' => 'INSERT',
 			),
 		);
-
-		$this->host     = 'localhost';
-		$this->name     = 'api-test';
-		$this->username = 'c3c19e377130';
-		$this->password = 'G!v3t8k3';
-		$this->charset  = 'utf8mb4';
-
+	
 		try {
 			$this->connection = $this->make_connection();
 		}
@@ -48,10 +58,23 @@ class API_Database {
 
 	}
 	
+	public function set_credentials( $credentials = array() ) {
+
+		$default_credential_args = array(
+			'host'      => '',
+			'name'      => '',
+			'username'  => '',
+			'password'  => '',
+			'charset'   => 'utf8mb4'
+		);
+
+		$this->credentials = array_merge( $default_credential_args, $credentials );
+	}
+
 	private function make_connection() {
 		
-		$dsn = sprintf( "mysql:host=%s;dbname=%s;charset=%s", $this->host, $this->name, $this->charset );
-		$pdo = new PDO( $dsn, $this->username, $this->password );
+		$dsn = sprintf( "mysql:host=%s;dbname=%s;charset=%s", $this->credentials['host'], $this->credentials['name'], $this->credentials['charset'] );
+		$pdo = new PDO( $dsn, $this->credentials['username'], $this->credentials['password'] );
 		
 		if ( ! $pdo instanceof PDO ) {
 			throw new Exception( "Database credentials are incorrect. Please check and try your request again." );
