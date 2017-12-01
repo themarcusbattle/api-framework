@@ -6,7 +6,7 @@
  */
 
 // Load the include
-include('includes/class-api-request.php');
+include('includes/class-api-router.php');
 include('includes/class-api-query.php');
 include('includes/class-api-database.php');
 include('includes/class-api.php');

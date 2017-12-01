@@ -18,8 +18,9 @@ class API_Database {
 
 	public $connection;
 
-	public function __construct() {
+	public function __construct( $credentials = array() ) {
 		
+		print_r( $credentials ); exit;
 		$this->actions = array(
 			'GET' => array(
 				'action'  => 'get',
@@ -31,8 +32,6 @@ class API_Database {
 			),
 		);
 
-		// Load class-settings-database.php to grab credentials.
- 
 		$this->host     = 'localhost';
 		$this->name     = 'api-test';
 		$this->username = 'c3c19e377130';

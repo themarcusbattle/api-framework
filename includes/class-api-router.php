@@ -4,10 +4,12 @@
  *
  * Captures details of the incoming request.
  */
-class API_Request {
+class API_Router {
 
-	public $api;
-	
+	public $api = NULL;
+
+	public $database;
+
     protected $request;
     
     protected $query;
@@ -23,7 +25,10 @@ class API_Request {
 	/**
 	 * The constructor.
 	 */
-    public function __construct( $request = '' ) {
+    public function __construct( $request = '', API_Database $database = NULL, API $api = NULL ) {
+	
+		$this->api          = $api;
+		$this->database     = $database;
 
 		// Save all of the initial requests to the API.
         $request_parts      = parse_url( $request );

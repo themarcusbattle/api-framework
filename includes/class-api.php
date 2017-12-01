@@ -3,19 +3,28 @@
  * API Class. 
  */
 class API {
-	
+
+	/**
+	 * The API Schema config file.
+	 */
 	protected $schema;
 	
+	/**
+	 * The database credentials.
+	 */
+	protected $credentials;
+
 	/**
 	 * The constructor.
 	 */
 	public function __construct() {
 		
-		$this->schema   = $this->load_config( 'schema' );
-		
-		$this->request  = new API_Request( $_SERVER['REQUEST_URI'] );
-		$this->query    = new API_Query( $this->request );
-		$this->database = new API_Database();
+		$this->schema      = $this->load_config( 'schema' );
+		$this->credentials = $this->load_config( 'database' );
+		print_r($this->credentials); exit;
+		$this->database    = new API_Database( $this->get_credentials() );
+		$this->router      = new API_Router( $_SERVER['REQUEST_URI'], $this->database, $this );
+		// $this->query    = new API_Query( $this->request);
 
 	}
 	
@@ -24,7 +33,7 @@ class API {
 	 */
 	public function load_config( $config_name = '' ) {
 		
-		$schema_path = dirname( __FILE__ ) . '/' . $config_name . '.json';
+		$schema_path = dirname( __FILE__ ) . '/config/' . $config_name . '.json';
 		
 		if ( ! file_exists( $schema_path ) ) {
 			return;
@@ -37,14 +46,14 @@ class API {
 	public function get_response() { 
 		
 		// Validate the access token
-		if ( ! $this->request->verify_access_token() ) {
+		if ( ! $this->router->verify_access_token() ) {
 			return array(
 				'error_description' => 'Your access token is invalid or expired'
 			);
 		}
 		
 		// Verify that the request is valid.
-		if ( ! $this->request->verify_request( $this->get_schema() ) ) {
+		if ( ! $this->router->verify_request( $this->get_schema() ) ) {
 			return array( 'error' => 'This request is invalid. Check the API version or endpoint and try again.' );
 		}
 		
@@ -61,6 +70,10 @@ class API {
 	
 	public function get_schema() {
 		return $this->schema;
+	}
+	
+	public function get_credentials() {
+		return $this->credentials;
 	}
 
 	/**
