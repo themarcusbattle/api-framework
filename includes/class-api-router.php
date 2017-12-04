@@ -40,6 +40,8 @@ class API_Router {
 		// Parse the required variables.
 		$this->version      = $this->parse_version();
 		$this->endpoint     = $this->parse_endpoint();
+		$this->resources    = $this->parse_resources();
+		$this->parameters   = $this->parse_parameters();
 		
     }
     
@@ -65,13 +67,30 @@ class API_Router {
     
     public function verify_access_token() {
     	
-    	if ( ! $this->get_access_token() ) {
+    	if ( ! $access_token = $this->get_access_token() ) {
     		return;
     	}
     	
+    	$args = array(
+    		'access_token' => $access_token
+    	);
+
+    	$result = $this->database->get( 'tokens', $args );
+    	
+    	if ( ! $result ) {
+    		return;
+    	}
+    	
+    	// @todo: Set user ID
+		$this->set_active_user( $result );
+
     	return true;
     }
 	
+	public function set_active_user( $token = array() ) {
+		
+	}
+
 	public function verify_request( $schema = array() ) {
 		
 		// Check to see if the API version is defined.
@@ -97,6 +116,47 @@ class API_Router {
     	
     	return false;
     }
+    
+    public function parse_resources() {
+
+        $resource_parts = explode( '/', substr( $this->get_endpoint(), 1 ) );
+
+        foreach ( array_chunk( $resource_parts, 2 ) as $resource ) {
+            $resources[] = array(
+                'resource' => isset( $resource[0] ) ? $resource[0] : '',
+                'id'       => isset( $resource[1] ) ? $resource[1] : '',
+            );
+        }
+
+        return $resources;
+    }
+
+	public function parse_parameters() {
+
+        $query_parts = explode( '&', $this->get_query() );
+
+        $parameters = array();
+
+        foreach ( $query_parts as $query ) {
+
+            $parameter_parts = explode( '=', $query );
+
+            $parameters[] = array(
+                'parameter' => $parameter_parts[0],
+                'value'     => $parameter_parts[1],
+            );
+        }
+        
+        return $parameters;
+    }
+
+	public function get_resources() {
+		return $this->resources;
+	}
+	
+	public function get_parameters() {
+		return $this->parameters;
+	}
      
     public function get_request() {
         return $this->request;

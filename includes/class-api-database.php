@@ -37,17 +37,6 @@ class API_Database {
 		
 		$this->set_credentials( $credentials );
 
-		$this->actions = array(
-			'GET' => array(
-				'action'  => 'get',
-				'command' => 'SELECT',
-			),
-			'POST' => array(
-				'action'  => 'insert',
-				'command' => 'INSERT',
-			),
-		);
-	
 		try {
 			$this->connection = $this->make_connection();
 		}
@@ -83,8 +72,43 @@ class API_Database {
 		return $pdo;
 	}
 	
-	public function parse_method( $method = 'GET' ) {
-		return $this->actions[ $method ];
+	public function get( $table, $conditions = array() ) {
+		
+		$sql = "SELECT * FROM $table" . $this->parse_where_clause( $conditions );
+		
+		return $this->query( $sql );
+	}
+
+	public function parse_where_clause( $conditions = array() ) {
+		
+		$where_clause = '';
+		$counter      = 0;
+
+		if ( empty( $conditions ) ) {
+			return $where_clause;
+		}
+
+		$where_clause = " WHERE ";
+
+		foreach ( $conditions as $column => $value ) {
+			$where_clause .=  ( $counter ) ? ' AND' : '';
+			$where_clause .= " $column = '" . $value . "'";
+		}
+		
+		return $where_clause;
+	}
+	
+	public function query( $sql = '' ) {
+		
+		if ( empty( $sql ) ) {
+			return array();
+		}
+		
+		// Execute the statement. 
+		$statement = $this->connection->prepare( $sql );
+		$statement->execute();
+		
+		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}
 
 	public function get_results( API_Query $query, $schema ) {

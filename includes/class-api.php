@@ -82,9 +82,18 @@ class API {
 		if ( ! $this->router->verify_request( $this->get_schema() ) ) {
 			return array( 'error' => 'This request is invalid. Check the API version or endpoint and try again.' );
 		}
+		
+		$args = array(
+			'GET'  => 'get',
+			'POST' => 'insert',
+		);
 
+		$action = isset( $args[ $this->router->get_method() ] ) ? $args[ $this->router->get_method() ] : 'get';
+		
+		$resources = $this->router->get_resources();
+		
 		// Convert the query into SQL.
-		$data = $this->database->get_results( $this->query, $this->schema );
+		$data = $this->database->$action( $resources[0]['resource'] );
 
 		return array(
 			'meta' => array(
@@ -124,6 +133,5 @@ class API {
 		header( 'Content-type: application/json' );
 
 		echo json_encode( $data );
-
 	}
 }
